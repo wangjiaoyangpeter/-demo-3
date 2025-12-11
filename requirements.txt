@@ -4,5 +4,5 @@ akshare
 requests
 beautifulsoup4
 scikit-learn
-st_page
 altair
+numpy
