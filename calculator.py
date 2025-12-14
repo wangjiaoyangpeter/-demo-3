@@ -6,21 +6,30 @@ from config import FINANCE_SITES, DEFAULT_HEADERS
 import streamlit as st
 def get_eps_from_web(stock_code: str) -> Optional[float]:
     """
-    从网页获取实时EPS（每股收益）
+    从网页获取实时EPS（每股收益），增加重试机制提高稳定性
     """
     url = FINANCE_SITES["sina"].format(stock_code)
-    try:
-        response = requests.get(url, headers=DEFAULT_HEADERS, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        # 这里需要根据实际网页结构调整解析逻辑
-        eps_tag = soup.find("span", text="每股收益")
-        if eps_tag:
-            eps_text = eps_tag.find_next_sibling().text
-            return float(eps_text)
-    except Exception as e:
-        print(f"EPS获取失败: {e}")
-        return None
+    max_retries = 3
+    retry_delay = 2  # 秒
+    
+    for retry in range(max_retries):
+        try:
+            response = requests.get(url, headers=DEFAULT_HEADERS, timeout=15)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            # 这里需要根据实际网页结构调整解析逻辑
+            eps_tag = soup.find("span", text="每股收益")
+            if eps_tag:
+                eps_text = eps_tag.find_next_sibling().text
+                return float(eps_text)
+            return None
+        except requests.exceptions.RequestException as e:
+            print(f"EPS获取失败 (重试 {retry+1}/{max_retries}): {e}")
+            if retry < max_retries - 1:
+                import time
+                time.sleep(retry_delay)
+            else:
+                return None
 def calculate_pe_ratio(
     stock_history: pd.DataFrame,
     stock_code: str,
@@ -46,12 +55,12 @@ def calculate_pe_ratio(
     if eps is None or eps <= 0:
         st.info("EPS数据不可用，使用模拟值计算PE。")
         eps = 1.5 # 模拟值
-    # 计算PE = 股价 / EPS
-    close_prices = stock_history['close']
-    pe_series = close_prices / eps
+    # 计算PE = 当前股价 / EPS
+    current_price = stock_history['close'].iloc[-1]  # 使用最新收盘价作为当前股价
+    pe_series = pd.Series([current_price / eps] * len(stock_history), index=stock_history.index)
     # 生成结果
     result_df = pd.DataFrame({
-    'close': close_prices,
+    'close': stock_history['close'],
     'EPS': eps,
     'PE': pe_series,
     'PE_MA': pe_series.rolling(window=period_days).mean()
