@@ -42,6 +42,8 @@ def fetch_stock_history(stock_code: Optional[str] = None) -> Optional[pd.DataFra
                 "成交量": "volume"
             }, inplace=True)
             
+            # 将日期转换为datetime类型并设置收盘时间为15:00
+            history_df['date'] = pd.to_datetime(history_df['date']) + pd.Timedelta(hours=15)
             history_df.set_index("date", inplace=True)
             
             # 保存到 CSV
@@ -87,6 +89,8 @@ def fetch_stock_history(stock_code: Optional[str] = None) -> Optional[pd.DataFra
                 "成交量": "volume"
             }, inplace=True)
             
+            # 将日期转换为datetime类型并设置收盘时间为15:00
+            history_df['date'] = pd.to_datetime(history_df['date']) + pd.Timedelta(hours=15)
             history_df.set_index("date", inplace=True)
             
             # 保存到 CSV
