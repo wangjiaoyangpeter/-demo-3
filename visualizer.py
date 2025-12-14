@@ -2,8 +2,8 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 
-def plot_stock_data(df: pd.DataFrame):
-    """绘制股票价格图"""
+def plot_stock_data(df: pd.DataFrame, forecast_df: pd.DataFrame = None):
+    """绘制股票价格图，支持显示预测数据"""
     if df.empty:
         return
     
@@ -13,12 +13,23 @@ def plot_stock_data(df: pd.DataFrame):
         df['date'] = pd.to_datetime(df['date'])
         df = df.set_index('date')
     
-    # 创建Altair图表
-    chart = alt.Chart(df.reset_index()).mark_line().encode(
+    # 重置索引以便Altair处理
+    df_reset = df.reset_index()
+    
+    # 创建基础图表
+    base = alt.Chart(df_reset).encode(
         x=alt.X('date:T', title='日期'),
         y=alt.Y('close:Q', title='价格'),
         tooltip=['date:T', 'close:Q']
-    ).properties(
+    )
+    
+    # 实际价格线
+    actual_price = base.mark_line(color='#1f77b4', strokeWidth=2).encode(
+        y=alt.Y('close:Q', title='价格')
+    )
+    
+    # 组合图表
+    chart = alt.layer(actual_price).properties(
         title='股票价格走势',
         width=800,
         height=300
@@ -31,6 +42,42 @@ def plot_stock_data(df: pd.DataFrame):
     ).configure_view(
         stroke=None
     )
+    
+    # 如果有预测数据，添加预测价格线
+    if forecast_df is not None and not forecast_df.empty:
+        # 确保预测数据的索引是日期类型
+        if not isinstance(forecast_df.index, pd.DatetimeIndex):
+            forecast_df = forecast_df.copy()
+            forecast_df['date'] = pd.to_datetime(forecast_df['date'])
+            forecast_df = forecast_df.set_index('date')
+        
+        forecast_df_reset = forecast_df.reset_index()
+        
+        # 预测价格线
+        predicted_price = alt.Chart(forecast_df_reset).mark_line(
+            color='#2ca02c', 
+            strokeWidth=2, 
+            strokeDash=[3, 3]
+        ).encode(
+            x='date:T',
+            y='Forecasted_Price:Q',
+            tooltip=['date:T', 'Forecasted_Price:Q']
+        )
+        
+        # 添加到组合图表中
+        chart = alt.layer(actual_price, predicted_price).properties(
+            title='股票价格走势（含预测）',
+            width=800,
+            height=300
+        ).configure_title(
+            fontSize=16
+        ).configure_axis(
+            labelFontSize=12,
+            titleFontSize=14,
+            grid=True
+        ).configure_view(
+            stroke=None
+        )
     
     st.altair_chart(chart, use_container_width=True)
 
@@ -94,8 +141,8 @@ def plot_pe_analysis(pe_df: pd.DataFrame, forecast_df: pd.DataFrame):
             strokeDash=[3, 3]
         ).encode(
             x='date:T',
-            y='predicted_PE:Q',
-            tooltip=['date:T', 'predicted_PE:Q']
+            y='Forecasted_PE:Q',
+            tooltip=['date:T', 'Forecasted_PE:Q']
         )
         
         # 添加到组合图表中
