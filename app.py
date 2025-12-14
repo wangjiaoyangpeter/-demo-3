@@ -8,6 +8,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# 添加自定义CSS使DataFrame数据居中显示
+st.markdown("""
+<style>
+/* 使DataFrame数据单元格居中显示 */
+div[data-testid="stDataFrame"] table td {
+    text-align: center;
+}
+
+/* 使DataFrame表头居中显示 */
+div[data-testid="stDataFrame"] table th {
+    text-align: center;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # 主页面内容
 st.title("股票智能分析系统")
 
